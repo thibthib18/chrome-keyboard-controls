@@ -1,5 +1,3 @@
-console.log("Content script loaded");
-
 chrome.runtime.onMessage.addListener(
   async (message, sender: chrome.runtime.MessageSender) => {
     if (message.type === "open-group-selector") {
@@ -17,15 +15,26 @@ async function openGroupSelector() {
                 <head>
                   <style>
                     /* Style the dialog */
+                    #group-list {
+                      list-style-type: none;
+                      padding-inline-start: 0;
+                    }
+
+                    #group-list li {
+                      margin: 4px;
+                      padding: 4px;
+                      padding-left: 8px;
+                    }
+
                     #dialog {
                       position: absolute;
                       top: 50%;
                       left: 50%;
                       transform: translate(-50%, -50%);
                       width: 400px;
-                      height: 400px;
                       padding: 20px;
-                      border: 1px solid #ccc;
+                      border: 1px solid black;
+                      box-shadow: 0 0 4px 0 black;
                       background-color: #fff;
                     }
 
@@ -54,55 +63,72 @@ async function openGroupSelector() {
   const tabGroups = (await chrome.runtime.sendMessage({
     command: "getGroups",
   })) as chrome.tabGroups.TabGroup[];
-  console.log("received tabGroups", tabGroups);
   const list = document.getElementById("group-list") as HTMLUListElement;
   if (!list) {
     alert("Could not find group list element");
     return;
   }
 
+  let selectedGroupIndex = 0;
   // Add groups to the list
   function setGroupList(tabGroups: chrome.tabGroups.TabGroup[]) {
     list.innerHTML = "";
-    tabGroups.forEach((group) => {
+    tabGroups.forEach((group, index) => {
       const listItem = document.createElement("li");
       listItem.innerText = group.title || "Untitled";
-      listItem.setAttribute(
-        "style",
-        `background-color: ${group.color}; border-radius: 5px;`
-      );
+      listItem.style.backgroundColor = group.color;
+      listItem.style.borderRadius = "4px";
+      listItem.style.opacity = selectedGroupIndex === index ? "0.8" : "1";
       list.appendChild(listItem);
     });
   }
   setGroupList(tabGroups);
 
-  function onKeyUp(event: KeyboardEvent) {
-    console.log("Content script key: ", event.key);
+  document.getElementById("text-input")?.focus();
 
+  function onClose() {
+    const container = document.getElementById("group-selector-container");
+    document.removeEventListener("keyup", onKeyUp);
+    container?.remove();
+  }
+
+  async function onKeyUp(event: KeyboardEvent) {
     // Get the text from the text input
     const textInput = document.getElementById("text-input") as HTMLInputElement;
     const text = textInput.value;
-    console.log("Text input value: ", text);
 
     const filteredGroups = tabGroups.filter((group) => {
       return (group.title || "Untitled")
         .toLowerCase()
         .includes(text.toLowerCase());
     });
-    setGroupList(filteredGroups);
 
     if (event.key === "Escape") {
-      console.log("Escape pressed");
-      const container = document.getElementById("group-selector-container");
-      document.removeEventListener("keyup", onKeyUp);
-      container?.remove();
+      onClose();
       return;
+    } else if (event.key === "Enter") {
+      if (filteredGroups.length === 0) {
+        chrome.runtime.sendMessage({
+          command: "addTabToNewGroup",
+          title: text,
+        });
+        return;
+      }
+      const selectedGroup = filteredGroups[selectedGroupIndex];
+      chrome.runtime.sendMessage({
+        command: "addTabToGroup",
+        groupId: selectedGroup.id,
+      });
+      onClose();
+    } else if (event.key === "ArrowDown") {
+      selectedGroupIndex = (selectedGroupIndex + 1) % filteredGroups.length;
+    } else if (event.key === "ArrowUp") {
+      selectedGroupIndex = (selectedGroupIndex - 1) % filteredGroups.length;
+    } else {
+      selectedGroupIndex = 0;
     }
-    // If the Enter key was pressed
-    if (event.key === "Enter") {
-      // Open a new tab with the text as the URL
-      console.log("Adding tab to group: " + text);
-    }
+
+    setGroupList(filteredGroups);
   }
 
   document.addEventListener("keyup", onKeyUp);

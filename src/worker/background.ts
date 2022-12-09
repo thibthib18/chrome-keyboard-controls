@@ -9,7 +9,7 @@ async function getCurrentTab(): Promise<chrome.tabs.Tab> {
 async function addTabToNewGroup(
   tabId: number,
   title: string,
-  color: chrome.tabGroups.ColorEnum
+  color?: chrome.tabGroups.ColorEnum
 ): Promise<chrome.tabGroups.TabGroup> {
   const options = { tabIds: [tabId] };
   const groupId = await chrome.tabs.group(options);
@@ -69,7 +69,6 @@ async function goToGroupLastTab(group: chrome.tabGroups.TabGroup) {
 }
 
 async function moveTab(tab: chrome.tabs.Tab, direction: number) {
-  console.log(`Moving tab ${direction}`);
   const tabs = await chrome.tabs.query({});
   const tabPosition = tabs.findIndex((t) => t.id === tab.id);
   if (tabPosition === -1) {
@@ -116,11 +115,15 @@ async function handleMessage(
   message: any,
   sender: chrome.runtime.MessageSender
 ) {
-  console.log("Message received", message);
   if (message.command === "getGroups") {
     const tabGroups = await chrome.tabGroups.query({});
-    console.log("Sending groups", tabGroups);
     return tabGroups;
+  }
+  if (message.command === "addTabToNewGroup") {
+    if (!sender.tab || !sender.tab.id) {
+      return;
+    }
+    addTabToNewGroup(sender.tab.id, message.title);
   }
   if (message.command === "addTabToGroup") {
     if (!sender.tab || !sender.tab.id) {
