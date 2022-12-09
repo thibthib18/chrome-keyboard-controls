@@ -1,0 +1,48 @@
+{
+  "name": "Chrome Keyboard Controls",
+  "description": "Gain full control of Chrome from your keyboard!",
+  "version": "0.1",
+  "manifest_version": 3,
+  "permissions": ["activeTab", "scripting", "tabGroups", "tabs"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": { "default_title": "Keyboard Controls" },
+  "commands": {
+    "collapse-current-tab-group": {
+      "description": "Collapse the current tab group",
+      "suggested_key": { "default": "Ctrl+I" }
+    },
+    "collapse-all-groups": {
+      "description": "Collapse all tab groups",
+      "suggested_key": { "default": "Ctrl+O" }
+    },
+    "move-tab-left": {
+      "description": "Move current tab to the left",
+      "suggested_key": { "default": "Ctrl+Shift+J" }
+    },
+    "move-tab-right": {
+      "description": "Move current tab to the right",
+      "suggested_key": { "default": "Ctrl+Shift+K" }
+    },
+    "move-to-group": {
+      "description": "Move current tab to a chosen group"
+    }
+  },
+  "web_accessible_resources": [
+    {
+      "matches": ["<all_urls>"],
+      "resources": ["pages/group_selector.html"]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "base-uri 'self'; script-src 'self'; object-src 'self'"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "run_at": "document_idle",
+      "js": ["content.js"]
+    }
+  ]
+}
