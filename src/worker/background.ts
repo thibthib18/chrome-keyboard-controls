@@ -83,6 +83,23 @@ async function moveTab(tab: chrome.tabs.Tab, direction: number) {
   await chrome.tabs.move(tab.id, { index: nextTab.index });
 }
 
+async function moveToGroup(groupId: number) {
+  const currentTab = await getCurrentTab();
+  if (!currentTab.id) {
+    return;
+  }
+  const group = await getGroupFromId(groupId);
+  if (!group) {
+    return;
+  }
+  const tabsOfGroup = await chrome.tabs.query({
+    groupId: group.id,
+  });
+  if (tabsOfGroup.length === 0) {return;}
+  if (!tabsOfGroup[0].id) {return;}
+  chrome.tabs.update(tabsOfGroup[0].id, { active: true });
+}
+
 chrome.commands.onCommand.addListener(async function (command: string) {
   if (command === "collapse-current-tab-group") {
     const currentTabGroup = await getCurrentTabGroup();
@@ -102,12 +119,21 @@ chrome.commands.onCommand.addListener(async function (command: string) {
     const currentTab = await getCurrentTab();
     await moveTab(currentTab, +1);
   }
-  if (command === "move-to-group") {
+  if (command === "move-tab-to-group") {
+    console.log("move-tab-to-group");
     const currentTab = await getCurrentTab();
     if (!currentTab.id) {
       return;
     }
-    chrome.tabs.sendMessage(currentTab.id, { type: "open-group-selector" });
+    chrome.tabs.sendMessage(currentTab.id, { type: "addTabToGroup" });
+  }
+  if (command === "move-to-group") {
+    console.log("move-to-group");
+    const currentTab = await getCurrentTab();
+    if (!currentTab.id) {
+      return;
+    }
+    chrome.tabs.sendMessage(currentTab.id, { type: "moveToGroup" });
   }
 });
 
@@ -119,16 +145,16 @@ async function handleMessage(
     const tabGroups = await chrome.tabGroups.query({});
     return tabGroups;
   }
+  if (!sender.tab || !sender.tab.id) {
+    return;
+  }
+  if (message.command === "moveToGroup") {
+    moveToGroup(message.groupId);
+  }
   if (message.command === "addTabToNewGroup") {
-    if (!sender.tab || !sender.tab.id) {
-      return;
-    }
     addTabToNewGroup(sender.tab.id, message.title);
   }
   if (message.command === "addTabToGroup") {
-    if (!sender.tab || !sender.tab.id) {
-      return;
-    }
     const group = await getGroupFromId(message.groupId);
     if (!group) {
       return;

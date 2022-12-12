@@ -25,8 +25,11 @@
       "description": "Move current tab to the right",
       "suggested_key": { "default": "Ctrl+Shift+K" }
     },
-    "move-to-group": {
+    "move-tab-to-group": {
       "description": "Move current tab to a chosen group"
+    },
+    "move-to-group": {
+      "description": "Move to first tab of a chosen group"
     }
   },
   "web_accessible_resources": [

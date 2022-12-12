@@ -1,12 +1,46 @@
 chrome.runtime.onMessage.addListener(
   async (message, sender: chrome.runtime.MessageSender) => {
-    if (message.type === "open-group-selector") {
-      openGroupSelector();
+    if (message.type === "moveToGroup") {
+      openGroupSelector(moveToGroup);
+    }
+    if (message.type === "addTabToGroup") {
+      openGroupSelector(moveTabToGroup);
     }
   }
 );
 
-async function openGroupSelector() {
+interface OnGroupSelectedCallback {
+  (filteredGroups: chrome.tabGroups.TabGroup[], selectedGroupIndex: number, inputText: string): void;
+}
+
+
+function moveToGroup(filteredGroups: chrome.tabGroups.TabGroup[], selectedGroupIndex: number, inputText: string) {
+  if (filteredGroups.length === 0) {
+    return;
+  }
+  const selectedGroup = filteredGroups[selectedGroupIndex];
+  chrome.runtime.sendMessage({
+    command: "moveToGroup",
+    groupId: selectedGroup.id,
+  });
+}
+
+function moveTabToGroup(filteredGroups: chrome.tabGroups.TabGroup[], selectedGroupIndex: number, inputText: string) {
+  if (filteredGroups.length === 0) {
+    chrome.runtime.sendMessage({
+      command: "addTabToNewGroup",
+      title: inputText,
+    });
+    return;
+  }
+  const selectedGroup = filteredGroups[selectedGroupIndex];
+  chrome.runtime.sendMessage({
+    command: "addTabToGroup",
+    groupId: selectedGroup.id,
+  });
+}
+
+async function openGroupSelector(onGroupSelected: OnGroupSelectedCallback) {
   // Create an iframe to host the dialog
   const groupSelectorContainer = document.createElement("div");
   // groupSelectorFrame.src = chrome.runtime.getURL("pages/group_selector.html");
@@ -107,18 +141,7 @@ async function openGroupSelector() {
       onClose();
       return;
     } else if (event.key === "Enter") {
-      if (filteredGroups.length === 0) {
-        chrome.runtime.sendMessage({
-          command: "addTabToNewGroup",
-          title: text,
-        });
-        return;
-      }
-      const selectedGroup = filteredGroups[selectedGroupIndex];
-      chrome.runtime.sendMessage({
-        command: "addTabToGroup",
-        groupId: selectedGroup.id,
-      });
+      onGroupSelected(filteredGroups, selectedGroupIndex, text);
       onClose();
     } else if (event.key === "ArrowDown") {
       selectedGroupIndex = (selectedGroupIndex + 1) % filteredGroups.length;
