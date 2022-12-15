@@ -3,6 +3,7 @@ async function getCurrentTab(): Promise<chrome.tabs.Tab> {
     active: true,
     currentWindow: true,
   });
+
   return currentTab[0];
 }
 
@@ -15,6 +16,19 @@ async function addTabToNewGroup(
   const groupId = await chrome.tabs.group(options);
   const newGroup = await chrome.tabGroups.update(groupId, { color, title });
   return newGroup;
+}
+
+async function addAllRightToGroup(group: chrome.tabGroups.TabGroup) {
+  const currentTab = await getCurrentTab();
+  const allTabs = await chrome.tabs.query({});
+  allTabs.forEach(async (tab) => {
+    if (!tab.id) {
+      return;
+    }
+    if (tab.index >= currentTab.index) {
+      await addTabToGroup(tab.id, group);
+    }
+  });
 }
 
 async function addTabToGroup(tabId: number, group: chrome.tabGroups.TabGroup) {
@@ -95,8 +109,12 @@ async function moveToGroup(groupId: number) {
   const tabsOfGroup = await chrome.tabs.query({
     groupId: group.id,
   });
-  if (tabsOfGroup.length === 0) {return;}
-  if (!tabsOfGroup[0].id) {return;}
+  if (tabsOfGroup.length === 0) {
+    return;
+  }
+  if (!tabsOfGroup[0].id) {
+    return;
+  }
   chrome.tabs.update(tabsOfGroup[0].id, { active: true });
 }
 
@@ -128,12 +146,18 @@ chrome.commands.onCommand.addListener(async function (command: string) {
     chrome.tabs.sendMessage(currentTab.id, { type: "addTabToGroup" });
   }
   if (command === "move-to-group") {
-    console.log("move-to-group");
     const currentTab = await getCurrentTab();
     if (!currentTab.id) {
       return;
     }
     chrome.tabs.sendMessage(currentTab.id, { type: "moveToGroup" });
+  }
+  if (command === "add-all-right-to-group") {
+    const currentTab = await getCurrentTab();
+    if (!currentTab.id) {
+      return;
+    }
+    chrome.tabs.sendMessage(currentTab.id, { type: "addAllRightToGroup" });
   }
 });
 
@@ -160,6 +184,13 @@ async function handleMessage(
       return;
     }
     addTabToGroup(sender.tab.id, group);
+  }
+  if (message.command === "addAllRightToGroup") {
+    const group = await getGroupFromId(message.groupId);
+    if (!group) {
+      return;
+    }
+    addAllRightToGroup(group);
   }
 }
 

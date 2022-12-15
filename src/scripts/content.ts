@@ -6,15 +6,40 @@ chrome.runtime.onMessage.addListener(
     if (message.type === "addTabToGroup") {
       openGroupSelector(moveTabToGroup);
     }
+    if (message.type === "addAllRightToGroup") {
+      openGroupSelector(addAllRightToGroup);
+    }
   }
 );
 
 interface OnGroupSelectedCallback {
-  (filteredGroups: chrome.tabGroups.TabGroup[], selectedGroupIndex: number, inputText: string): void;
+  (
+    filteredGroups: chrome.tabGroups.TabGroup[],
+    selectedGroupIndex: number,
+    inputText: string
+  ): void;
 }
 
+function addAllRightToGroup(
+  filteredGroups: chrome.tabGroups.TabGroup[],
+  selectedGroupIndex: number,
+  inputText: string
+) {
+  if (filteredGroups.length === 0) {
+    return;
+  }
+  const selectedGroup = filteredGroups[selectedGroupIndex];
+  chrome.runtime.sendMessage({
+    command: "addAllRightToGroup",
+    groupId: selectedGroup.id,
+  });
+}
 
-function moveToGroup(filteredGroups: chrome.tabGroups.TabGroup[], selectedGroupIndex: number, inputText: string) {
+function moveToGroup(
+  filteredGroups: chrome.tabGroups.TabGroup[],
+  selectedGroupIndex: number,
+  inputText: string
+) {
   if (filteredGroups.length === 0) {
     return;
   }
@@ -25,7 +50,11 @@ function moveToGroup(filteredGroups: chrome.tabGroups.TabGroup[], selectedGroupI
   });
 }
 
-function moveTabToGroup(filteredGroups: chrome.tabGroups.TabGroup[], selectedGroupIndex: number, inputText: string) {
+function moveTabToGroup(
+  filteredGroups: chrome.tabGroups.TabGroup[],
+  selectedGroupIndex: number,
+  inputText: string
+) {
   if (filteredGroups.length === 0) {
     chrome.runtime.sendMessage({
       command: "addTabToNewGroup",
@@ -45,8 +74,6 @@ async function openGroupSelector(onGroupSelected: OnGroupSelectedCallback) {
   const groupSelectorContainer = document.createElement("div");
   // groupSelectorFrame.src = chrome.runtime.getURL("pages/group_selector.html");
   groupSelectorContainer.innerHTML = `
-              <html>
-                <head>
                   <style>
                     /* Style the dialog */
                     #group-list {
@@ -61,7 +88,8 @@ async function openGroupSelector(onGroupSelected: OnGroupSelectedCallback) {
                     }
 
                     #dialog {
-                      position: absolute;
+                      position: fixed;
+                      z-index: 1000;
                       top: 50%;
                       left: 50%;
                       transform: translate(-50%, -50%);

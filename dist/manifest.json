@@ -30,6 +30,9 @@
     },
     "move-to-group": {
       "description": "Move to first tab of a chosen group"
+    },
+    "add-all-right-to-group": {
+      "description": "Move to all tabs right to a chosen group"
     }
   },
   "web_accessible_resources": [
